@@ -6,65 +6,59 @@ import time
 st.set_page_config(
     page_title="Tic Tac Toe",
     page_icon="◼",
-    layout="wide",
+    layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-# ── Minimal CSS: board grid + card treatment only ──
+# ── Minimal CSS: board styling only ──
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    .board {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 2px;
-        background: #2A2A2A;
-        border: 2px solid #2A2A2A;
-        border-radius: 8px;
-        overflow: hidden;
-        max-width: 360px;
-        margin: 0 auto;
-    }
-    .cell {
-        aspect-ratio: 1;
-        background: #141414;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 3rem;
-        font-weight: 700;
-        transition: background 150ms;
-        cursor: pointer;
-    }
-    .cell:hover {
-        background: #1A1A1A;
-    }
-    .cell.x { color: #C96442; }
-    .cell.o { color: #00D4AA; }
-    .cell.win { background: #1A2A1A; }
+    /* Board container */
+    .stMainBlockContainer {max-width: 420px !important;}
 
+    /* Cell buttons — tile style */
+    div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] button {
+        width: 100% !important;
+        height: 96px !important;
+        font-size: 2.2rem !important;
+        font-weight: 700 !important;
+        border-radius: 6px !important;
+        border: 1px solid #2A2A2A !important;
+        background: #141414 !important;
+        color: #FAF9F5 !important;
+        transition: background 150ms !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] button:hover {
+        background: #1A1A1A !important;
+        border-color: #3A3A3A !important;
+    }
+    div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] button:disabled {
+        color: #FAF9F5 !important;
+        opacity: 1 !important;
+    }
+
+    /* New Game button — subtle */
+    button[kind="secondary"] {
+        background: #141414 !important;
+        border: 1px solid #2A2A2A !important;
+        color: #87867F !important;
+    }
+
+    /* Score cards */
     .score-card {
         background: #141414;
         border: 1px solid #2A2A2A;
         border-radius: 8px;
-        padding: 20px;
+        padding: 16px 8px;
         text-align: center;
     }
-    .score-card h3 {
-        font-size: 0.85rem;
-        color: #87867F;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin: 0;
-    }
-    .score-card .value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
+    div[data-testid="stMetric"] { background: transparent !important; }
 
     ::-webkit-scrollbar {width: 6px;}
     ::-webkit-scrollbar-track {background: #0D0D0D;}
@@ -75,13 +69,9 @@ st.markdown("""
 # ── Game Logic ──
 
 def check_winner(board):
-    """Return 'X', 'O', 'tie', or None."""
     lines = [
-        # rows
         [(0,0),(0,1),(0,2)], [(1,0),(1,1),(1,2)], [(2,0),(2,1),(2,2)],
-        # cols
         [(0,0),(1,0),(2,0)], [(0,1),(1,1),(2,1)], [(0,2),(1,2),(2,2)],
-        # diags
         [(0,0),(1,1),(2,2)], [(0,2),(1,1),(2,0)],
     ]
     for line in lines:
@@ -93,12 +83,10 @@ def check_winner(board):
     return None, []
 
 def minimax(board, is_maximizing, alpha=-float("inf"), beta=float("inf")):
-    """Minimax with alpha-beta pruning. AI is 'O' (maximizing)."""
     winner, _ = check_winner(board)
-    if winner == "O": return 10 - count_empty(board)
-    if winner == "X": return count_empty(board) - 10
+    if winner == "O": return 10
+    if winner == "X": return -10
     if winner == "tie": return 0
-
     if is_maximizing:
         best = -float("inf")
         for r in range(3):
@@ -124,11 +112,7 @@ def minimax(board, is_maximizing, alpha=-float("inf"), beta=float("inf")):
                     if beta <= alpha: break
         return best
 
-def count_empty(board):
-    return sum(1 for r in range(3) for c in range(3) if board[r][c] == "")
-
 def ai_move(board):
-    """AI ('O') picks best move via minimax. First move is random for variety."""
     empty = [(r,c) for r in range(3) for c in range(3) if board[r][c] == ""]
     if not empty: return None
     if len(empty) == 9:
@@ -152,91 +136,74 @@ def init_game():
     st.session_state.winner = None
     st.session_state.win_line = []
     st.session_state.game_over = False
-    if "x_wins" not in st.session_state:
-        st.session_state.x_wins = 0
-    if "o_wins" not in st.session_state:
-        st.session_state.o_wins = 0
-    if "ties" not in st.session_state:
-        st.session_state.ties = 0
+    for k in ("x_wins", "o_wins", "ties"):
+        if k not in st.session_state:
+            st.session_state[k] = 0
 
 if "board" not in st.session_state:
     init_game()
 
-# ── Mode Selector ──
+# ── Header ──
 
-col1, col2, col3 = st.columns([2, 1, 2])
-with col2:
-    mode = st.radio("Mode", ["vs AI (Minimax)", "2 Players"], horizontal=True, label_visibility="collapsed")
-    vs_ai = mode.startswith("vs")
+st.title("Tic Tac Toe")
+st.caption("Minimax AI with alpha-beta pruning")
 
-# ── Scoreboard ──
+# ── Mode + Score ──
+
+mode = st.radio("Mode", ["vs AI", "2 Players"], horizontal=True, label_visibility="collapsed")
+vs_ai = mode == "vs AI"
 
 sc1, sc2, sc3 = st.columns(3)
-with sc1:
-    st.markdown(f"""<div class="score-card"><h3>X {'(You)' if vs_ai else ''}</h3><div class="value" style="color:#C96442">{st.session_state.x_wins}</div></div>""", unsafe_allow_html=True)
-with sc2:
-    st.markdown(f"""<div class="score-card"><h3>Ties</h3><div class="value" style="color:#87867F">{st.session_state.ties}</div></div>""", unsafe_allow_html=True)
-with sc3:
-    st.markdown(f"""<div class="score-card"><h3>O {'(AI)' if vs_ai else ''}</h3><div class="value" style="color:#00D4AA">{st.session_state.o_wins}</div></div>""", unsafe_allow_html=True)
+sc1.metric("X", st.session_state.x_wins)
+sc2.metric("Ties", st.session_state.ties)
+sc3.metric("O", st.session_state.o_wins)
 
 # ── Status ──
 
-st.markdown("<br>", unsafe_allow_html=True)
 if st.session_state.game_over:
-    if st.session_state.winner == "tie":
-        st.markdown("<p style='text-align:center;color:#87867F;font-size:1.1rem'>It's a tie.</p>", unsafe_allow_html=True)
-    elif st.session_state.winner:
-        color = "#C96442" if st.session_state.winner == "X" else "#00D4AA"
-        name = "You" if (st.session_state.winner == "X" and vs_ai) else ("AI" if st.session_state.winner == "O" and vs_ai else st.session_state.winner)
-        st.markdown(f"<p style='text-align:center;color:{color};font-size:1.3rem;font-weight:700'>{name} won</p>", unsafe_allow_html=True)
+    w = st.session_state.winner
+    if w == "tie":
+        st.markdown("##### It's a tie")
+    else:
+        name = "You win" if (w == "X" and vs_ai) else ("AI wins" if w == "O" and vs_ai else f"{w} wins")
+        st.markdown(f"##### {name}")
 else:
-    turn_name = "Your turn" if (st.session_state.turn == "X" or not vs_ai) else "AI is thinking..."
-    st.markdown(f"<p style='text-align:center;color:#B0AEA5;font-size:1.1rem'>{turn_name}</p>", unsafe_allow_html=True)
+    label = "Your turn" if (st.session_state.turn == "X" or not vs_ai) else "..."
+    st.markdown(f"##### {label}")
 
-# ── Board ──
-
-st.markdown("<div class='board'>", unsafe_allow_html=True)
+# ── Board (3 rows × 3 cols) ──
 
 for r in range(3):
+    cols = st.columns(3, gap="small")
     for c in range(3):
         cell = st.session_state.board[r][c]
         win = (r, c) in st.session_state.win_line
-        cls = f"cell {'x' if cell == 'X' else 'o' if cell == 'O' else ''} {'win' if win else ''}"
-        display = cell if cell else " "
-        st.markdown(f"<div class='{cls}'>{display}</div>", unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ── Click Buttons ──
-
-st.markdown("<br>", unsafe_allow_html=True)
-if not st.session_state.game_over:
-    cols = st.columns(3)
-    for i, (r, c) in enumerate([(r,c) for r in range(3) for c in range(3)]):
-        with cols[i % 3]:
-            cell_val = st.session_state.board[r][c]
-            disabled = cell_val != "" or (vs_ai and st.session_state.turn == "O")
-            label = cell_val if cell_val else "·"
-            if st.button(label, key=f"cell_{r}_{c}", disabled=disabled, use_container_width=True):
-                # Player X move
-                st.session_state.board[r][c] = "X"
-                winner, win_line = check_winner(st.session_state.board)
-                if winner:
-                    st.session_state.winner = winner
-                    st.session_state.win_line = win_line
-                    st.session_state.game_over = True
-                    if winner == "X":
-                        st.session_state.x_wins += 1
-                    elif winner == "tie":
-                        st.session_state.ties += 1
-                else:
-                    st.session_state.turn = "O"
-                st.rerun()
+        with cols[c]:
+            label = cell if cell else " "
+            disabled = cell != "" or st.session_state.game_over or (vs_ai and st.session_state.turn == "O")
+            # Style: X in terracotta, O in cyan
+            if cell == "X":
+                st.markdown(f"<div class='cell-x' style='width:100%;height:96px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;color:#C96442;background:#141414;border:1px solid #2A2A2A;border-radius:6px'>{cell}</div>", unsafe_allow_html=True)
+            elif cell == "O":
+                st.markdown(f"<div class='cell-o' style='width:100%;height:96px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;color:#00D4AA;background:#141414;border:1px solid #2A2A2A;border-radius:6px'>{cell}</div>", unsafe_allow_html=True)
+            else:
+                if st.button(" ", key=f"b{r}{c}", disabled=disabled, use_container_width=True):
+                    st.session_state.board[r][c] = "X"
+                    winner, win_line = check_winner(st.session_state.board)
+                    if winner:
+                        st.session_state.winner = winner
+                        st.session_state.win_line = win_line
+                        st.session_state.game_over = True
+                        if winner == "X": st.session_state.x_wins += 1
+                        elif winner == "tie": st.session_state.ties += 1
+                    else:
+                        st.session_state.turn = "O"
+                    st.rerun()
 
 # ── AI Move ──
 
 if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
-    time.sleep(0.4)  # Brief think pause — human feel
+    time.sleep(0.3)
     move = ai_move(st.session_state.board)
     if move:
         r, c = move
@@ -246,24 +213,16 @@ if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
             st.session_state.winner = winner
             st.session_state.win_line = win_line
             st.session_state.game_over = True
-            if winner == "O":
-                st.session_state.o_wins += 1
-            elif winner == "tie":
-                st.session_state.ties += 1
+            if winner == "O": st.session_state.o_wins += 1
+            elif winner == "tie": st.session_state.ties += 1
         else:
             st.session_state.turn = "X"
         st.rerun()
 
 # ── Controls ──
 
-st.markdown("<br>", unsafe_allow_html=True)
-c1, c2, c3 = st.columns([2, 1, 2])
-with c2:
-    if st.button("New Game", use_container_width=True):
-        # Track the current winner before resetting
-        if st.session_state.game_over and st.session_state.winner not in (None, "tie"):
-            pass  # already counted above
-        init_game()
-        st.rerun()
+if st.button("New Game", use_container_width=True):
+    init_game()
+    st.rerun()
 
-st.markdown("<p style='text-align:center;color:#87867F;font-size:0.75rem;margin-top:2rem'>AI uses minimax with alpha-beta pruning — unbeatable in theory. First move is randomized for variety.</p>", unsafe_allow_html=True)
+st.caption("Unbeatable minimax AI • First move randomized for variety")
