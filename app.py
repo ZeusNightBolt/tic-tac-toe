@@ -205,7 +205,7 @@ for r in range(3):
 if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
     time.sleep(0.3)
     move = ai_move(st.session_state.board)
-    if move:
+    if move is not None:
         r, c = move
         st.session_state.board[r][c] = "O"
         winner, win_line = check_winner(st.session_state.board)
