@@ -2,7 +2,6 @@ import streamlit as st
 import random
 import time
 
-# ── MUST be first Streamlit command ──
 st.set_page_config(
     page_title="Tic Tac Toe",
     page_icon="◼",
@@ -10,55 +9,56 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Responsive CSS: scales from iPhone SE (375px) to desktop ──
+# ── CSS: Force 3x3 grid, never stack ──
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    #MainMenu, footer, header {visibility: hidden;}
 
-    /* ── Responsive cell size via CSS custom property ── */
-    :root {
-        /* 96px on desktop, scales to ~28vw on narrow phones, caps at 1/3 of content area */
-        --cell: min(96px, 28vw, calc((100vw - 48px) / 3));
-        --cell-font: min(2.2rem, 7vw, 2.8rem);
+    /* Force Streamlit columns to NEVER stack */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        overflow: visible !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        min-width: 0 !important;
+        flex: 1 1 0 !important;
     }
 
-    /* Board container — no horizontal overflow */
-    .stMainBlockContainer {
-        max-width: 480px !important;
-        overflow-x: hidden !important;
+    /* Board container — constrain width */
+    section.main > div.block-container {
+        max-width: 440px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
     }
 
-    /* Cell buttons — tile style, square, responsive */
-    div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] button {
+    /* Cell buttons */
+    div[data-testid="stHorizontalBlock"] button {
         width: 100% !important;
-        height: var(--cell) !important;
-        font-size: var(--cell-font) !important;
+        aspect-ratio: 1 !important;
+        font-size: min(2.4rem, 11vw) !important;
         font-weight: 700 !important;
         border-radius: 6px !important;
         border: 1px solid #2A2A2A !important;
         background: #141414 !important;
         color: #FAF9F5 !important;
-        transition: background 150ms !important;
         padding: 0 !important;
         margin: 0 !important;
-        min-width: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         min-height: 44px !important;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
     }
-    div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] button:hover {
+    div[data-testid="stHorizontalBlock"] button:hover {
         background: #1A1A1A !important;
         border-color: #3A3A3A !important;
     }
-    div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] button:disabled {
+    div[data-testid="stHorizontalBlock"] button:disabled {
         color: #FAF9F5 !important;
         opacity: 1 !important;
     }
-
-    /* Streamlit column gaps — reduce on mobile */
-    div[data-testid="stHorizontalBlock"] { gap: 2px !important; }
 
     /* New Game button */
     button[kind="secondary"] {
@@ -69,43 +69,12 @@ st.markdown("""
         touch-action: manipulation;
     }
 
-    /* Filled cell divs — match button sizing */
-    .cell-filled {
-        width: 100%;
-        height: var(--cell);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: var(--cell-font);
-        font-weight: 700;
-        background: #141414;
-        border: 1px solid #2A2A2A;
-        border-radius: 6px;
-    }
-    .cell-x { color: #C96442; }
-    .cell-o { color: #00D4AA; }
-    .cell-win { background: #1A2A1A !important; }
-
-    /* Score metric cards */
     div[data-testid="stMetric"] { background: transparent !important; }
 
-    /* Mobile Safari fixes */
+    /* Safari mobile */
     body { overscroll-behavior: contain; }
     @supports (-webkit-touch-callout: none) {
         .stApp { min-height: -webkit-fill-available; }
-    }
-
-    /* Extra-narrow phones (<360px) — squeeze slightly more */
-    @media (max-width: 370px) {
-        :root {
-            --cell: min(80px, 27vw, calc((100vw - 40px) / 3));
-            --cell-font: min(1.8rem, 6.5vw, 2.4rem);
-        }
-    }
-
-    /* iPad / wider screens — let cells breathe */
-    @media (min-width: 500px) {
-        div[data-testid="stHorizontalBlock"] { gap: 4px !important; }
     }
 
     ::-webkit-scrollbar {width: 6px;}
@@ -192,12 +161,10 @@ if "board" not in st.session_state:
     init_game()
 
 # ── Header ──
-
 st.title("Tic Tac Toe")
 st.caption("Minimax AI · Unbeatable")
 
 # ── Mode + Score ──
-
 mode = st.radio("Mode", ["vs AI", "2 Players"], horizontal=True, label_visibility="collapsed")
 vs_ai = mode == "vs AI"
 
@@ -207,7 +174,6 @@ sc2.metric("Ties", st.session_state.ties)
 sc3.metric("O", st.session_state.o_wins)
 
 # ── Status ──
-
 if st.session_state.game_over:
     w = st.session_state.winner
     if w == "tie":
@@ -219,23 +185,29 @@ else:
     label = "Your turn" if (st.session_state.turn == "X" or not vs_ai) else "..."
     st.markdown(f"##### {label}")
 
-# ── Board (3 rows × 3 cols) ──
-
+# ── Board — 3×3 grid using st.columns with forced nowrap ──
 for r in range(3):
     cols = st.columns(3, gap="small")
     for c in range(3):
         cell = st.session_state.board[r][c]
-        win = (r, c) in st.session_state.win_line
+        disabled = cell != "" or st.session_state.game_over or (vs_ai and st.session_state.turn == "O")
         with cols[c]:
-            disabled = cell != "" or st.session_state.game_over or (vs_ai and st.session_state.turn == "O")
             if cell == "X":
-                cls = "cell-filled cell-x" + (" cell-win" if win else "")
-                st.markdown(f"<div class='{cls}'>X</div>", unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;'
+                    'justify-content:center;font-size:min(2.4rem,11vw);font-weight:700;'
+                    'color:#C96442;background:#141414;border:1px solid #2A2A2A;'
+                    'border-radius:6px">X</div>',
+                    unsafe_allow_html=True)
             elif cell == "O":
-                cls = "cell-filled cell-o" + (" cell-win" if win else "")
-                st.markdown(f"<div class='{cls}'>O</div>", unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;'
+                    'justify-content:center;font-size:min(2.4rem,11vw);font-weight:700;'
+                    'color:#00D4AA;background:#141414;border:1px solid #2A2A2A;'
+                    'border-radius:6px">O</div>',
+                    unsafe_allow_html=True)
             else:
-                if st.button(" ", key=f"b{r}{c}", disabled=disabled, use_container_width=True):
+                if st.button("", key=f"b{r}{c}", disabled=disabled, use_container_width=True):
                     st.session_state.board[r][c] = "X"
                     winner, win_line = check_winner(st.session_state.board)
                     if winner:
@@ -249,7 +221,6 @@ for r in range(3):
                     st.rerun()
 
 # ── AI Move ──
-
 if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
     time.sleep(0.3)
     move = ai_move(st.session_state.board)
@@ -268,7 +239,6 @@ if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
         st.rerun()
 
 # ── Controls ──
-
 if st.button("New Game", use_container_width=True):
     init_game()
     st.rerun()
