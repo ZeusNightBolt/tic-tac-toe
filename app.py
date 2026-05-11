@@ -9,34 +9,45 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── CSS: Force 3x3 grid, never stack ──
+# ── CSS: Viewport-contained — no scroll, fits any iPhone ──
 st.markdown("""
 <style>
     #MainMenu, footer, header {visibility: hidden;}
 
-    /* Force Streamlit columns to NEVER stack */
+    /* ── Lock to viewport — NO scrolling ── */
+    html, body, .stApp, section.main, div.block-container {
+        overflow: hidden !important;
+    }
+    .stApp {
+        height: 100dvh !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ── Content block — tight padding ── */
+    section.main > div.block-container {
+        max-width: 480px !important;
+        padding: 8px 12px 8px 12px !important;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh !important;
+    }
+
+    /* ── Force 3-column grid, never stack ── */
     div[data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
         gap: 4px !important;
-        overflow: visible !important;
     }
     div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
         min-width: 0 !important;
         flex: 1 1 0 !important;
     }
 
-    /* Board container — constrain width */
-    section.main > div.block-container {
-        max-width: 440px !important;
-        padding-left: 16px !important;
-        padding-right: 16px !important;
-    }
-
-    /* Cell buttons */
+    /* ── Cell buttons — size from viewport, perfect squares ── */
     div[data-testid="stHorizontalBlock"] button {
         width: 100% !important;
         aspect-ratio: 1 !important;
-        font-size: min(2.4rem, 11vw) !important;
+        font-size: min(2.2rem, 8vw, calc((100dvh - 280px) / 5)) !important;
         font-weight: 700 !important;
         border-radius: 6px !important;
         border: 1px solid #2A2A2A !important;
@@ -48,6 +59,7 @@ st.markdown("""
         align-items: center !important;
         justify-content: center !important;
         min-height: 44px !important;
+        min-width: 44px !important;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
     }
@@ -60,26 +72,63 @@ st.markdown("""
         opacity: 1 !important;
     }
 
-    /* New Game button */
+    /* ── Title: smaller on mobile ── */
+    h1 {
+        font-size: min(1.6rem, 6vw) !important;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    h5 {
+        font-size: min(1rem, 4vw) !important;
+        margin: 4px 0 !important;
+    }
+    p, .stCaptionContainer {
+        font-size: 0.75rem !important;
+        margin: 2px 0 !important;
+    }
+
+    /* ── Metric scores: compact ── */
+    div[data-testid="stMetric"] {
+        padding: 4px 0 !important;
+    }
+    div[data-testid="stMetric"] label {
+        font-size: 0.65rem !important;
+    }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        font-size: min(1.4rem, 5vw) !important;
+    }
+
+    /* ── Radio buttons: compact ── */
+    div[data-testid="stHorizontalBlock"] label {
+        font-size: 0.8rem !important;
+        padding: 4px 8px !important;
+    }
+
+    /* ── New Game button ── */
     button[kind="secondary"] {
         background: #141414 !important;
         border: 1px solid #2A2A2A !important;
         color: #87867F !important;
         min-height: 44px !important;
         touch-action: manipulation;
+        font-size: 0.85rem !important;
     }
 
-    div[data-testid="stMetric"] { background: transparent !important; }
+    /* ── Trim all Streamlit padding ── */
+    div[data-testid="stVerticalBlock"] {
+        gap: 4px !important;
+    }
+    .stMarkdown { margin: 2px 0 !important; }
 
-    /* Safari mobile */
+    /* ── Safari mobile ── */
     body { overscroll-behavior: contain; }
     @supports (-webkit-touch-callout: none) {
         .stApp { min-height: -webkit-fill-available; }
     }
 
-    ::-webkit-scrollbar {width: 6px;}
+    ::-webkit-scrollbar {width: 4px;}
     ::-webkit-scrollbar-track {background: #0D0D0D;}
-    ::-webkit-scrollbar-thumb {background: #2A2A2A; border-radius: 3px;}
+    ::-webkit-scrollbar-thumb {background: #2A2A2A; border-radius: 2px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -145,8 +194,6 @@ def ai_move(board):
             best_move = (r, c)
     return best_move
 
-# ── Init State ──
-
 def init_game():
     st.session_state.board = [["", "", ""] for _ in range(3)]
     st.session_state.turn = "X"
@@ -160,12 +207,11 @@ def init_game():
 if "board" not in st.session_state:
     init_game()
 
-# ── Header ──
-st.title("Tic Tac Toe")
-st.caption("Minimax AI · Unbeatable")
+# ── Compact layout — everything fits iPhone viewport ──
 
-# ── Mode + Score ──
-mode = st.radio("Mode", ["vs AI", "2 Players"], horizontal=True, label_visibility="collapsed")
+st.title("Tic Tac Toe")
+
+mode = st.radio("", ["vs AI", "2 Players"], horizontal=True, label_visibility="collapsed", key="mode")
 vs_ai = mode == "vs AI"
 
 sc1, sc2, sc3 = st.columns(3)
@@ -173,19 +219,18 @@ sc1.metric("X", st.session_state.x_wins)
 sc2.metric("Ties", st.session_state.ties)
 sc3.metric("O", st.session_state.o_wins)
 
-# ── Status ──
 if st.session_state.game_over:
     w = st.session_state.winner
     if w == "tie":
-        st.markdown("##### It's a tie")
+        st.markdown("#### Tie")
     else:
         name = "You win" if (w == "X" and vs_ai) else ("AI wins" if w == "O" and vs_ai else f"{w} wins")
-        st.markdown(f"##### {name}")
+        st.markdown(f"#### {name}")
 else:
     label = "Your turn" if (st.session_state.turn == "X" or not vs_ai) else "..."
-    st.markdown(f"##### {label}")
+    st.markdown(f"#### {label}")
 
-# ── Board — 3×3 grid using st.columns with forced nowrap ──
+# ── Board ──
 for r in range(3):
     cols = st.columns(3, gap="small")
     for c in range(3):
@@ -195,16 +240,16 @@ for r in range(3):
             if cell == "X":
                 st.markdown(
                     '<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;'
-                    'justify-content:center;font-size:min(2.4rem,11vw);font-weight:700;'
-                    'color:#C96442;background:#141414;border:1px solid #2A2A2A;'
-                    'border-radius:6px">X</div>',
+                    'justify-content:center;font-size:min(2.2rem,8vw,calc((100dvh - 280px)/5));'
+                    'font-weight:700;color:#C96442;background:#141414;'
+                    'border:1px solid #2A2A2A;border-radius:6px">X</div>',
                     unsafe_allow_html=True)
             elif cell == "O":
                 st.markdown(
                     '<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;'
-                    'justify-content:center;font-size:min(2.4rem,11vw);font-weight:700;'
-                    'color:#00D4AA;background:#141414;border:1px solid #2A2A2A;'
-                    'border-radius:6px">O</div>',
+                    'justify-content:center;font-size:min(2.2rem,8vw,calc((100dvh - 280px)/5));'
+                    'font-weight:700;color:#00D4AA;background:#141414;'
+                    'border:1px solid #2A2A2A;border-radius:6px">O</div>',
                     unsafe_allow_html=True)
             else:
                 if st.button("", key=f"b{r}{c}", disabled=disabled, use_container_width=True):
@@ -220,7 +265,6 @@ for r in range(3):
                         st.session_state.turn = "O"
                     st.rerun()
 
-# ── AI Move ──
 if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
     time.sleep(0.3)
     move = ai_move(st.session_state.board)
@@ -238,9 +282,8 @@ if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
             st.session_state.turn = "X"
         st.rerun()
 
-# ── Controls ──
 if st.button("New Game", use_container_width=True):
     init_game()
     st.rerun()
 
-st.caption("Minimax AI with alpha-beta pruning")
+st.caption("Minimax AI · Alpha-beta pruning")
