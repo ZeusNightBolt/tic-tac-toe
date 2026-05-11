@@ -9,28 +9,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── CSS: Viewport-contained — no scroll, fits any iPhone ──
+# ── CSS: Scale cells from viewport — width AND height ──
 st.markdown("""
 <style>
     #MainMenu, footer, header {visibility: hidden;}
 
-    /* ── Lock to viewport — NO scrolling ── */
-    html, body, .stApp, section.main, div.block-container {
-        overflow: hidden !important;
-    }
-    .stApp {
-        height: 100dvh !important;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* ── Content block — tight padding ── */
+    /* ── Container: tight, no fixed height ── */
     section.main > div.block-container {
         max-width: 480px !important;
-        padding: 8px 12px 8px 12px !important;
-        display: flex;
-        flex-direction: column;
-        height: 100dvh !important;
+        padding: 8px 16px 8px 16px !important;
     }
 
     /* ── Force 3-column grid, never stack ── */
@@ -43,11 +30,17 @@ st.markdown("""
         flex: 1 1 0 !important;
     }
 
-    /* ── Cell buttons — size from viewport, perfect squares ── */
+    /* ── Cell buttons: scale to fit viewport ──
+       Cell width  = (viewport - 40px padding) / 3
+       Cell height = (viewport height - 280px chrome) / 4  (header+scores+status+controls+board)
+       Pick the SMALLER so cells always fit without scrolling */
     div[data-testid="stHorizontalBlock"] button {
         width: 100% !important;
-        aspect-ratio: 1 !important;
-        font-size: min(2.2rem, 8vw, calc((100dvh - 280px) / 5)) !important;
+        height: min(
+            calc((100vw - 40px) / 3),
+            calc((100dvh - 260px) / 4)
+        ) !important;
+        font-size: min(2.2rem, 7vw, calc((100dvh - 260px) / 8)) !important;
         font-weight: 700 !important;
         border-radius: 6px !important;
         border: 1px solid #2A2A2A !important;
@@ -72,36 +65,32 @@ st.markdown("""
         opacity: 1 !important;
     }
 
-    /* ── Title: smaller on mobile ── */
+    /* ── Compact typography ── */
     h1 {
-        font-size: min(1.6rem, 6vw) !important;
-        margin-bottom: 0 !important;
-        padding-bottom: 0 !important;
+        font-size: min(1.5rem, 5.5vw) !important;
+        margin: 0 0 2px 0 !important;
+        padding: 0 !important;
     }
-    h5 {
+    h4, h5 {
         font-size: min(1rem, 4vw) !important;
         margin: 4px 0 !important;
     }
-    p, .stCaptionContainer {
-        font-size: 0.75rem !important;
-        margin: 2px 0 !important;
+    .stCaptionContainer, .stCaptionContainer p {
+        font-size: 0.7rem !important;
+        margin: 1px 0 !important;
     }
 
-    /* ── Metric scores: compact ── */
-    div[data-testid="stMetric"] {
-        padding: 4px 0 !important;
-    }
-    div[data-testid="stMetric"] label {
-        font-size: 0.65rem !important;
-    }
+    /* ── Metrics: compact ── */
+    div[data-testid="stMetric"] { padding: 4px 0 !important; }
+    div[data-testid="stMetric"] label { font-size: 0.6rem !important; }
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        font-size: min(1.4rem, 5vw) !important;
+        font-size: min(1.3rem, 4.5vw) !important;
     }
 
-    /* ── Radio buttons: compact ── */
+    /* ── Radio: compact ── */
     div[data-testid="stHorizontalBlock"] label {
         font-size: 0.8rem !important;
-        padding: 4px 8px !important;
+        padding: 2px 6px !important;
     }
 
     /* ── New Game button ── */
@@ -114,13 +103,12 @@ st.markdown("""
         font-size: 0.85rem !important;
     }
 
-    /* ── Trim all Streamlit padding ── */
-    div[data-testid="stVerticalBlock"] {
-        gap: 4px !important;
-    }
-    .stMarkdown { margin: 2px 0 !important; }
+    /* ── Trim Streamlit gaps ── */
+    div[data-testid="stVerticalBlock"] { gap: 3px !important; }
+    .stMarkdown { margin: 1px 0 !important; }
+    div.block-container { gap: 4px !important; }
 
-    /* ── Safari mobile ── */
+    /* ── Safari ── */
     body { overscroll-behavior: contain; }
     @supports (-webkit-touch-callout: none) {
         .stApp { min-height: -webkit-fill-available; }
@@ -207,9 +195,10 @@ def init_game():
 if "board" not in st.session_state:
     init_game()
 
-# ── Compact layout — everything fits iPhone viewport ──
+# ── Layout ──
 
 st.title("Tic Tac Toe")
+st.caption("Minimax AI")
 
 mode = st.radio("", ["vs AI", "2 Players"], horizontal=True, label_visibility="collapsed", key="mode")
 vs_ai = mode == "vs AI"
@@ -239,15 +228,19 @@ for r in range(3):
         with cols[c]:
             if cell == "X":
                 st.markdown(
-                    '<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;'
-                    'justify-content:center;font-size:min(2.2rem,8vw,calc((100dvh - 280px)/5));'
+                    '<div style="width:100%;'
+                    'height:min(calc((100vw - 40px)/3), calc((100dvh - 260px)/4));'
+                    'display:flex;align-items:center;justify-content:center;'
+                    'font-size:min(2.2rem,7vw,calc((100dvh - 260px)/8));'
                     'font-weight:700;color:#C96442;background:#141414;'
                     'border:1px solid #2A2A2A;border-radius:6px">X</div>',
                     unsafe_allow_html=True)
             elif cell == "O":
                 st.markdown(
-                    '<div style="width:100%;aspect-ratio:1;display:flex;align-items:center;'
-                    'justify-content:center;font-size:min(2.2rem,8vw,calc((100dvh - 280px)/5));'
+                    '<div style="width:100%;'
+                    'height:min(calc((100vw - 40px)/3), calc((100dvh - 260px)/4));'
+                    'display:flex;align-items:center;justify-content:center;'
+                    'font-size:min(2.2rem,7vw,calc((100dvh - 260px)/8));'
                     'font-weight:700;color:#00D4AA;background:#141414;'
                     'border:1px solid #2A2A2A;border-radius:6px">O</div>',
                     unsafe_allow_html=True)
@@ -285,5 +278,3 @@ if vs_ai and st.session_state.turn == "O" and not st.session_state.game_over:
 if st.button("New Game", use_container_width=True):
     init_game()
     st.rerun()
-
-st.caption("Minimax AI · Alpha-beta pruning")
